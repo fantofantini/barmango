@@ -394,6 +394,7 @@ input[readonly]{background:var(--bg-2);color:var(--mid)}
 }
 
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 <div class="layout">
@@ -421,6 +422,10 @@ input[readonly]{background:var(--bg-2);color:var(--mid)}
     </div>
     <div class="nav-item" data-page="customers" onclick="navTo('customers')">
       <span class="icon">👥</span> Clientes
+    </div>
+    <div class="nav-group-label">Reportes</div>
+    <div class="nav-item" data-page="reports" onclick="navTo('reports')">
+      <span class="icon">📈</span> Reportes
     </div>
   </nav>
   <div class="sidebar-foot" id="api-status">Conectando…</div>
@@ -544,6 +549,62 @@ input[readonly]{background:var(--bg-2);color:var(--mid)}
             <thead><tr><th>ID</th><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Dirección</th><th>Ciudad</th><th>Encomiendas</th><th></th></tr></thead>
             <tbody id="tbody-customers"></tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- REPORTES -->
+    <div class="page" id="pg-reports">
+      <div class="grid grid-3" style="margin-bottom:20px">
+
+        <div class="card" style="border-top:4px solid #1a2e5a">
+          <div class="card-body" style="text-align:center;padding:28px 20px">
+            <div style="font-size:40px;margin-bottom:12px">📦</div>
+            <div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:6px">Encomiendas</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:18px">Todas las encomiendas registradas en el sistema</div>
+            <button class="btn btn-primary" style="width:100%" onclick="downloadExcel('jobs')">
+              ⬇ Descargar Excel
+            </button>
+          </div>
+        </div>
+
+        <div class="card" style="border-top:4px solid #0891b2">
+          <div class="card-body" style="text-align:center;padding:28px 20px">
+            <div style="font-size:40px;margin-bottom:12px">👥</div>
+            <div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:6px">Clientes</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:18px">Lista completa de todos los clientes registrados</div>
+            <button class="btn btn-primary" style="width:100%;background:var(--teal)" onclick="downloadExcel('customers')">
+              ⬇ Descargar Excel
+            </button>
+          </div>
+        </div>
+
+        <div class="card" style="border-top:4px solid #16a34a">
+          <div class="card-body" style="text-align:center;padding:28px 20px">
+            <div style="font-size:40px;margin-bottom:12px">🚗</div>
+            <div style="font-size:15px;font-weight:700;color:var(--ink);margin-bottom:6px">Mensajeros</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:18px">Lista completa de todos los mensajeros activos</div>
+            <button class="btn btn-primary" style="width:100%;background:var(--green)" onclick="downloadExcel('drivers')">
+              ⬇ Descargar Excel
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📊 Reporte Completo — Las 3 hojas en un solo archivo</span>
+        </div>
+        <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+          <div>
+            <div style="font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:4px">Encomiendas + Clientes + Mensajeros</div>
+            <div style="font-size:12px;color:var(--muted)">Un archivo Excel con las 3 pestañas listo para abrir en Google Sheets</div>
+          </div>
+          <button class="btn btn-success" style="padding:10px 24px;font-size:14px" onclick="downloadExcel('all')">
+            ⬇ Descargar Reporte Completo
+          </button>
         </div>
       </div>
     </div>
@@ -687,13 +748,14 @@ function toast(msg, type='ok') {
 }
 
 // ── Navigation ─────────────────────────────────────────────────────────────
-const TITLES = {dashboard:'Panel Principal',jobs:'Encomiendas',schedule:'Calendario',drivers:'Mensajeros',customers:'Clientes'};
+const TITLES = {dashboard:'Panel Principal',jobs:'Encomiendas',schedule:'Calendario',drivers:'Mensajeros',customers:'Clientes',reports:'Reportes'};
 const ACTIONS = {
   jobs:      () => `<button class="btn btn-success topbar-btn" onclick="openJobModal()">➕ <span class='btn-label'>Nueva Encomienda</span></button>`,
   drivers:   () => `<button class="btn btn-primary topbar-btn" onclick="openDriverModal()">➕ <span class='btn-label'>Agregar Mensajero</span></button>`,
   customers: () => `<button class="btn btn-primary topbar-btn" onclick="openCustomerModal()">➕ <span class='btn-label'>Agregar Cliente</span></button>`,
   schedule:  () => ``,
   dashboard: () => `<button class="btn btn-ghost btn-sm topbar-btn" onclick="loadDashboard()">↻</button>`,
+  reports:   () => ``,
 };
 let curPage = 'dashboard';
 
@@ -716,6 +778,7 @@ function loadPage(p) {
   if (p==='schedule')  loadSchedule();
   if (p==='drivers')   loadDrivers();
   if (p==='customers') loadCustomers();
+  if (p==='reports')   {} // static page
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -1126,6 +1189,9 @@ loadDashboard();
   </div>
   <div class="bottom-nav-item" data-bpage="customers" onclick="navTo('customers')">
     <span class="bn-icon">👥</span>Clientes
+  </div>
+  <div class="bottom-nav-item" data-bpage="reports" onclick="navTo('reports')">
+    <span class="bn-icon">📈</span>Reportes
   </div>
 </nav>
 
