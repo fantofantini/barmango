@@ -468,8 +468,9 @@ input[readonly]{background:var(--bg-2);color:var(--mid)}
       <div class="toolbar">
         <div class="search-wrap">
           <span class="search-ico">🔍</span>
-          <input type="text" id="job-q" placeholder="Buscar encomiendas, clientes, mensajeros…" oninput="loadJobs()">
+          <input type="text" id="job-q" placeholder="Buscar encomiendas, clientes, mensajeros…" oninput="document.getElementById('job-date-f').value=''; this.placeholder='Buscar encomiendas, clientes, mensajeros…'; loadJobs()">
         </div>
+        <input type="hidden" id="job-date-f" value="">
         <select id="job-status-f" onchange="loadJobs()" style="width:160px">
           <option value="">Todos los estados</option>
           <option>Pendiente</option><option>Programado</option>
@@ -789,9 +790,11 @@ async function loadDashboard() {
 async function loadJobs() {
   const q = document.getElementById('job-q')?.value||'';
   const sf = document.getElementById('job-status-f')?.value||'';
+  const df = document.getElementById('job-date-f')?.value||'';
   const params = new URLSearchParams();
   if (q) params.append('search', q);
   if (sf) params.append('status', sf);
+  if (df) params.append('pu_date', df);
 
   document.getElementById('tbody-jobs').innerHTML = '<tr><td colspan="8"><div class="loading">Loading…</div></td></tr>';
   const jobs = await api(`/jobs?${params}`);
@@ -863,7 +866,17 @@ function calMove(dir) {
   loadSchedule();
 }
 function calToday() { calY=new Date().getFullYear(); calM=new Date().getMonth(); loadSchedule(); }
-function calDayClick(date) { navTo('jobs'); setTimeout(()=>{ document.getElementById('job-q').value=date; loadJobs(); },60); }
+function calDayClick(date) {
+  navTo('jobs');
+  setTimeout(()=>{
+    document.getElementById('job-q').value = '';
+    document.getElementById('job-date-f').value = date;
+    // Show a date filter indicator
+    const fmtD = date.split('-');
+    document.getElementById('job-q').placeholder = '📅 Filtrando: ' + fmtD[2] + '/' + fmtD[1] + '/' + fmtD[0] + '  (borra para ver todos)';
+    loadJobs();
+  }, 60);
+}
 
 // ── Drivers ────────────────────────────────────────────────────────────────
 async function loadDrivers() {
