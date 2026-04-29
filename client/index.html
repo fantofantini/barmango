@@ -390,7 +390,7 @@ input[readonly]{background:var(--bg-2);color:var(--mid)}
 
 @media (max-width: 768px) {
   .btn-label { display: none; }
-  .topbar-right .btn { padding: 7px 10px; font-size: 16px; }
+  .topbar-btn { font-size: 20px; padding: 6px 12px; min-width: 42px; justify-content: center; }
 }
 
 </style>
@@ -483,8 +483,8 @@ input[readonly]{background:var(--bg-2);color:var(--mid)}
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>ID</th><th>Customer</th><th>Status</th><th>Driver</th>
-              <th>Pickup Date</th><th>Pickup Address</th><th>Delivery Date</th><th></th>
+              <th>ID</th><th>Cliente</th><th>Estado</th><th>Mensajero</th>
+              <th>F. Recogida</th><th>Dir. Recogida</th><th>Costo</th><th>F. Entrega</th><th></th>
             </tr></thead>
             <tbody id="tbody-jobs"></tbody>
           </table>
@@ -521,7 +521,7 @@ input[readonly]{background:var(--bg-2);color:var(--mid)}
         <div class="card-header"><span class="card-title">Driver Roster</span></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Email</th><th>City</th><th>State</th><th>Encomiendas</th><th></th></tr></thead>
+            <thead><tr><th>ID</th><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Ciudad</th><th>Provincia</th><th>Encomiendas</th><th></th></tr></thead>
             <tbody id="tbody-drivers"></tbody>
           </table>
         </div>
@@ -540,7 +540,7 @@ input[readonly]{background:var(--bg-2);color:var(--mid)}
         <div class="card-header"><span class="card-title">Customer Database</span></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Email</th><th>Address</th><th>City</th><th>Encomiendas</th><th></th></tr></thead>
+            <thead><tr><th>ID</th><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Dirección</th><th>Ciudad</th><th>Encomiendas</th><th></th></tr></thead>
             <tbody id="tbody-customers"></tbody>
           </table>
         </div>
@@ -688,11 +688,11 @@ function toast(msg, type='ok') {
 // ── Navigation ─────────────────────────────────────────────────────────────
 const TITLES = {dashboard:'Panel Principal',jobs:'Encomiendas',schedule:'Calendario',drivers:'Mensajeros',customers:'Clientes'};
 const ACTIONS = {
-  jobs:      () => `<button class="btn btn-success" onclick="openJobModal()"><span>➕</span> <span class='btn-label'>Nueva Encomienda</span></button>`,
-  drivers:   () => `<button class="btn btn-primary" onclick="openDriverModal()"><span>➕</span> <span class='btn-label'>Agregar Mensajero</span></button>`,
-  customers: () => `<button class="btn btn-primary" onclick="openCustomerModal()"><span>➕</span> <span class='btn-label'>Agregar Cliente</span></button>`,
+  jobs:      () => `<button class="btn btn-success topbar-btn" onclick="openJobModal()">➕ <span class='btn-label'>Nueva Encomienda</span></button>`,
+  drivers:   () => `<button class="btn btn-primary topbar-btn" onclick="openDriverModal()">➕ <span class='btn-label'>Agregar Mensajero</span></button>`,
+  customers: () => `<button class="btn btn-primary topbar-btn" onclick="openCustomerModal()">➕ <span class='btn-label'>Agregar Cliente</span></button>`,
   schedule:  () => ``,
-  dashboard: () => `<button class="btn btn-ghost btn-sm" onclick="loadDashboard()"><span>↻</span> <span class='btn-label'>Actualizar</span></button>`,
+  dashboard: () => `<button class="btn btn-ghost btn-sm topbar-btn" onclick="loadDashboard()">↻ <span class='btn-label'>Actualizar</span></button>`,
 };
 let curPage = 'dashboard';
 
