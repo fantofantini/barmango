@@ -259,6 +259,136 @@ input[readonly]{background:var(--bg-2);color:var(--mid)}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ══════════════════════════════════════════════════════
+   RESPONSIVE — MOBILE FIRST
+   ══════════════════════════════════════════════════════ */
+
+/* ── Bottom nav bar (mobile only, hidden on desktop) ── */
+.bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 60px;
+  background: var(--sidebar);
+  border-top: 1px solid rgba(255,255,255,.08);
+  z-index: 500;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 4px;
+}
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  color: rgba(255,255,255,.45);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: all .15s;
+  flex: 1;
+  letter-spacing: .3px;
+}
+.bottom-nav-item .bn-icon { font-size: 19px; line-height: 1; }
+.bottom-nav-item.active { color: #fff; background: rgba(37,99,235,.25); }
+.bottom-nav-item:hover  { color: #fff; }
+
+@media (max-width: 768px) {
+
+  /* Hide desktop sidebar */
+  .sidebar { display: none !important; }
+
+  /* Show bottom nav */
+  .bottom-nav { display: flex; }
+
+  /* Add padding so content doesn't hide behind bottom nav */
+  .content { padding: 14px 12px 76px; }
+
+  /* Topbar */
+  .topbar { padding: 0 14px; height: 50px; }
+  .page-title { font-size: 15px; }
+  .topbar-right .btn span { display: none; } /* hide text, keep icon */
+
+  /* KPI grid → 2 cols */
+  .grid-4 { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+  .grid-3 { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+  .grid-2 { grid-template-columns: 1fr !important; gap: 10px !important; }
+
+  /* KPI cards smaller */
+  .kpi { padding: 14px 14px; }
+  .kpi-value { font-size: 26px; }
+  .kpi-icon { font-size: 22px; bottom: 8px; right: 10px; }
+
+  /* Cards */
+  .card-header { padding: 11px 14px; flex-wrap: wrap; gap: 8px; }
+  .card-body { padding: 12px; }
+
+  /* Tables → horizontal scroll with card-like rows */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { font-size: 12px; min-width: 480px; }
+  thead th { padding: 8px 10px; font-size: 9.5px; }
+  td { padding: 8px 10px; }
+
+  /* Toolbar */
+  .toolbar { flex-wrap: wrap; gap: 6px; }
+  .toolbar select { width: 100% !important; }
+
+  /* Modals → full screen */
+  .overlay { align-items: flex-end; padding: 0; }
+  .modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 92vh;
+    border-radius: 16px 16px 0 0;
+    animation: slide-up .25s ease;
+  }
+  @keyframes slide-up {
+    from { transform: translateY(100%); opacity: 0; }
+  }
+  .modal-head { padding: 14px 16px 12px; }
+  .modal-body { padding: 14px 16px; }
+  .modal-foot { padding: 12px 16px; }
+
+  /* Form grid → single column on mobile */
+  .form-grid { grid-template-columns: 1fr !important; gap: 10px; }
+  .form-group.span2 { grid-column: 1 !important; }
+
+  /* Calendar */
+  .cal-nav-row { flex-wrap: wrap; gap: 8px; }
+  .cal-month { font-size: 16px; }
+  .cal-day { min-height: 56px; padding: 4px; }
+  .cal-dn { font-size: 11px; }
+  .cal-pill { font-size: 8.5px; padding: 1px 3px; }
+  .cal-hdr { font-size: 9px; padding: 3px 0; letter-spacing: .3px; }
+
+  /* Bar charts */
+  .bar-label { width: 70px; font-size: 11px; }
+  .bar-val { font-size: 11px; }
+
+  /* Buttons */
+  .btn { padding: 7px 11px; font-size: 12px; }
+  .btn-sm { padding: 5px 8px; font-size: 11px; }
+
+  /* Recent jobs table on dashboard — fewer cols */
+  #tbody-recent tr td:nth-child(6) { display: none; } /* hide address */
+
+}
+
+@media (max-width: 400px) {
+  .grid-4 { grid-template-columns: 1fr 1fr !important; }
+  .kpi-value { font-size: 22px; }
+  .cal-day { min-height: 46px; }
+  .bottom-nav-item { font-size: 9px; padding: 4px 6px; }
+}
+
+
+@media (max-width: 768px) {
+  .btn-label { display: none; }
+}
+
 </style>
 </head>
 <body>
@@ -554,19 +684,21 @@ function toast(msg, type='ok') {
 // ── Navigation ─────────────────────────────────────────────────────────────
 const TITLES = {dashboard:'Panel Principal',jobs:'Encomiendas',schedule:'Calendario',drivers:'Mensajeros',customers:'Clientes'};
 const ACTIONS = {
-  jobs:      () => `<button class="btn btn-success" onclick="openJobModal()">➕ Nueva Encomienda</button>`,
-  drivers:   () => `<button class="btn btn-primary" onclick="openDriverModal()">➕ Agregar Mensajero</button>`,
-  customers: () => `<button class="btn btn-primary" onclick="openCustomerModal()">➕ Agregar Cliente</button>`,
+  jobs:      () => `<button class="btn btn-success" onclick="openJobModal()"><span>➕</span> <span class='btn-label'>Nueva Encomienda</span></button>`,
+  drivers:   () => `<button class="btn btn-primary" onclick="openDriverModal()"><span>➕</span> <span class='btn-label'>Agregar Mensajero</span></button>`,
+  customers: () => `<button class="btn btn-primary" onclick="openCustomerModal()"><span>➕</span> <span class='btn-label'>Agregar Cliente</span></button>`,
   schedule:  () => ``,
-  dashboard: () => `<button class="btn btn-ghost btn-sm" onclick="loadDashboard()">↻ Actualizar</button>`,
+  dashboard: () => `<button class="btn btn-ghost btn-sm" onclick="loadDashboard()"><span>↻</span> <span class='btn-label'>Actualizar</span></button>`,
 };
 let curPage = 'dashboard';
 
 function navTo(page) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.bottom-nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById(`pg-${page}`).classList.add('active');
   document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
+  document.querySelector(`[data-bpage="${page}"]`)?.classList.add('active');
   document.getElementById('page-title').textContent = TITLES[page];
   document.getElementById('topbar-right').innerHTML = (ACTIONS[page]||'')();
   curPage = page;
@@ -960,5 +1092,25 @@ fetch(API+'/stats').then(()=>{
 
 loadDashboard();
 </script>
+
+<!-- ── BOTTOM NAV (mobile only) ──────────────────────────────────────── -->
+<nav class="bottom-nav" id="bottom-nav">
+  <div class="bottom-nav-item active" data-bpage="dashboard" onclick="navTo('dashboard')">
+    <span class="bn-icon">📊</span>Panel
+  </div>
+  <div class="bottom-nav-item" data-bpage="jobs" onclick="navTo('jobs')">
+    <span class="bn-icon">📋</span>Encomiendas
+  </div>
+  <div class="bottom-nav-item" data-bpage="schedule" onclick="navTo('schedule')">
+    <span class="bn-icon">📅</span>Calendario
+  </div>
+  <div class="bottom-nav-item" data-bpage="drivers" onclick="navTo('drivers')">
+    <span class="bn-icon">🚗</span>Mensajeros
+  </div>
+  <div class="bottom-nav-item" data-bpage="customers" onclick="navTo('customers')">
+    <span class="bn-icon">👥</span>Clientes
+  </div>
+</nav>
+
 </body>
 </html>
