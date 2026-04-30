@@ -68,6 +68,7 @@ def init_db():
         signature    TEXT,
         del_picture  TEXT,
         costo_servicio REAL DEFAULT 0,
+        ubicacion    TEXT DEFAULT '',
         notes        TEXT,
         created_at   TEXT DEFAULT (datetime('now')),
         updated_at   TEXT DEFAULT (datetime('now'))
@@ -200,7 +201,8 @@ def create_job():
          data.get('pu_address',''), data.get('pu_date',''), data.get('pu_time',''),
          data.get('del_address',''), data.get('del_date',''), data.get('del_time',''),
          data.get('signature',''), data.get('del_picture',''), data.get('notes',''),
-         data.get('costo_servicio', 0)))
+         data.get('costo_servicio', 0),
+         data.get('ubicacion', '')))
     conn.commit()
     job_id = cur.lastrowid
     conn.close()
