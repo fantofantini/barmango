@@ -490,7 +490,7 @@ input[readonly]{background:var(--bg-2);color:var(--mid)}
           <table>
             <thead><tr>
               <th>ID</th><th>Cliente</th><th>Estado</th><th>Mensajero</th>
-              <th>F. Recogida</th><th>Dir. Recogida</th><th>Costo</th><th>F. Entrega</th><th></th>
+              <th>F. Recogida</th><th>Dir. Recogida</th><th>Costo</th><th>F. Entrega</th><th>Mapa</th><th></th>
             </tr></thead>
             <tbody id="tbody-jobs"></tbody>
           </table>
@@ -875,7 +875,10 @@ async function loadJobs() {
         <td style="font-size:12px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${j.pu_address||'—'}</td>
         <td><strong style="color:var(--green);font-family:var(--mono)">$${(j.costo_servicio||0).toFixed(2)}</strong></td>
         <td>${fmt(j.del_date)}</td>
-        <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openJobModal(${j.id})">Editar</button></td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openJobModal(${j.id})">Editar</button>
+          ${j.ubicacion ? `<button class="btn btn-sm" style="background:#1a73e8;color:#fff;margin-left:4px" onclick="event.stopPropagation();openMapFromTable('${j.ubicacion}')">🗺</button>` : ''}
+        </td>
       </tr>`).join('')
     : `<tr><td colspan="8"><div class="empty"><div class="ei">📭</div><p>No se encontraron encomiendas</p></div></td></tr>`;
 }
@@ -1015,13 +1018,14 @@ async function openJobModal(id=null) {
     document.getElementById('j-sig').value      = j.signature||'';
     document.getElementById('j-pic').value      = j.del_picture||'';
     document.getElementById('j-notes').value    = j.notes||'';
-    document.getElementById('j-costo').value   = j.costo_servicio||0;
+    document.getElementById('j-costo').value     = j.costo_servicio||0;
+    document.getElementById('j-ubicacion').value = j.ubicacion||'';
     document.getElementById('j-cust-phone').value = j.customer_phone||'';
     document.getElementById('btn-del-job').style.display = 'inline-flex';
   } else {
     document.getElementById('job-modal-title').textContent = 'Nueva Encomienda';
     ['j-cust','j-driver','j-pu-addr','j-pu-date','j-pu-time','j-del-addr',
-     'j-del-date','j-del-time','j-sig','j-pic','j-notes','j-cust-phone','j-costo'].forEach(id=>document.getElementById(id).value='');
+     'j-del-date','j-del-time','j-sig','j-pic','j-notes','j-cust-phone','j-costo','j-ubicacion'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('j-status').value = 'Pendiente';
     document.getElementById('btn-del-job').style.display = 'none';
   }
@@ -1056,6 +1060,7 @@ async function saveJob() {
     del_picture: document.getElementById('j-pic').value,
     notes:       document.getElementById('j-notes').value,
     costo_servicio: parseFloat(document.getElementById('j-costo').value)||0,
+    ubicacion:      document.getElementById('j-ubicacion').value,
   };
   if (editJobId) {
     await api(`/jobs/${editJobId}`, 'PUT', body);
@@ -1171,6 +1176,42 @@ fetch(API+'/stats').then(()=>{
 });
 
 loadDashboard();
+
+// ── Open Map ───────────────────────────────────────────────────────────────
+function openMap() {
+  const ubicacion = document.getElementById('j-ubicacion').value.trim();
+  if (!ubicacion) {
+    toast('No hay enlace de ubicación guardado', 'err');
+    return;
+  }
+  // If it's already a full URL, open directly
+  if (ubicacion.startsWith('http')) {
+    window.open(ubicacion, '_blank');
+    return;
+  }
+  // If it's coordinates (lat,lng), build a Google Maps URL
+  const coordPattern = /^-?\d+\.\d+,\s*-?\d+\.\d+$/;
+  if (coordPattern.test(ubicacion)) {
+    window.open(`https://www.google.com/maps?q=${ubicacion}`, '_blank');
+    return;
+  }
+  // Otherwise treat as a search query
+  window.open(`https://www.google.com/maps/search/${encodeURIComponent(ubicacion)}`, '_blank');
+}
+
+function openMapFromTable(ubicacion) {
+  if (!ubicacion) return;
+  if (ubicacion.startsWith('http')) {
+    window.open(ubicacion, '_blank');
+    return;
+  }
+  const coordPattern = /^-?\d+\.\d+,\s*-?\d+\.\d+$/;
+  if (coordPattern.test(ubicacion)) {
+    window.open(`https://www.google.com/maps?q=${ubicacion}`, '_blank');
+    return;
+  }
+  window.open(`https://www.google.com/maps/search/${encodeURIComponent(ubicacion)}`, '_blank');
+}
 
 // ── Excel Download ──────────────────────────────────────────────────────────
 async function downloadExcel(type) {
