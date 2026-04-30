@@ -659,6 +659,13 @@ input[readonly]{background:var(--bg-2);color:var(--mid)}
           <label>Moneda</label>
           <select id="j-moneda"><option value="USD">🇺🇸 USD - Dólar</option></select></div>
         <div class="form-group span2">
+          <label>📍 Enlace de Ubicación (Google Maps)</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="text" id="j-ubicacion" placeholder="https://maps.google.com/... o -0.1807,-78.4678" style="flex:1">
+            <button type="button" class="btn btn-primary" onclick="openMap()" style="white-space:nowrap;flex-shrink:0;padding:8px 14px">🗺 Mapa</button>
+          </div>
+        </div>
+        <div class="form-group span2">
           <label>Notas adicionales</label>
           <textarea id="j-notes" placeholder="Cualquier observación sobre esta encomienda…"></textarea></div>
       </div>
@@ -997,7 +1004,7 @@ async function openJobModal(id=null) {
   const [drivers, customers] = await Promise.all([api('/drivers'), api('/customers')]);
 
   document.getElementById('j-cust').innerHTML =
-    '<option value="">Select customer…</option>' +
+    '<option value="">Seleccionar cliente…</option>' +
     customers.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
   document.getElementById('j-driver').innerHTML =
     '<option value="">Seleccionar mensajero…</option>' +
