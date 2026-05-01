@@ -86,7 +86,8 @@ def make_user_resp(u, token=None):
     return d
 
 def init_db():
-    print(f'Using database at: {DB_PATH}')
+    print(f'[INIT] Using database at: {DB_PATH}')
+    print(f'[INIT] DB dir exists: {os.path.exists(os.path.dirname(DB_PATH))}')
     conn = get_db(); c = conn.cursor()
     c.executescript("""
     CREATE TABLE IF NOT EXISTS roles (
@@ -142,6 +143,7 @@ def init_db():
     );
     """)
     conn.commit()
+    print('[INIT] Tables created successfully')
     conn.close()
 
     # Re-open connection for inserts to ensure clean state
@@ -160,6 +162,7 @@ def init_db():
         (3,"Mensajeros","Equipo en campo",3),
         (4,"Supervisores","Supervisión general",4),
     ])
+    print('[INIT] Inserting default users/roles/groups...')
     c.executemany("INSERT OR IGNORE INTO usuarios (id,nombre,username,email,password,grupo_id,activo) VALUES (?,?,?,?,?,?,?)",[
         (1,"Administrador","admin","admin@barmango.ec",hash_pw("admin123"),1,1),
         (2,"Juan Operador","juan.operador","juan@barmango.ec",hash_pw("operador123"),2,1),
@@ -168,6 +171,10 @@ def init_db():
         (5,"María Operadora","maria.operadora","maria@barmango.ec",hash_pw("operador123"),2,1),
     ])
     conn.commit()
+    role_count = c.execute("SELECT COUNT(*) FROM roles").fetchone()[0]
+    user_count = c.execute("SELECT COUNT(*) FROM usuarios").fetchone()[0]
+    group_count = c.execute("SELECT COUNT(*) FROM grupos").fetchone()[0]
+    print(f'[INIT] Roles: {role_count}, Groups: {group_count}, Users: {user_count}')
 
     if c.execute("SELECT COUNT(*) FROM drivers").fetchone()[0] == 0:
         c.executemany("INSERT INTO drivers (name,phone,email,address,city,state,zip,notes) VALUES (?,?,?,?,?,?,?,?)",[
