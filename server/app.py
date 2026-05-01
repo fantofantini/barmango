@@ -15,8 +15,22 @@ CORS(app, supports_credentials=True)
 
 DB_PATH = os.path.join(BASE_DIR, 'db', 'delivery.db')
 
-# Simple in-memory token store {token: user_id}
-TOKENS = {}
+# Token stored in DB to survive gunicorn restarts
+def save_token(token, user_id):
+    conn = get_db()
+    conn.execute("INSERT OR REPLACE INTO tokens (token, user_id) VALUES (?,?)", (token, user_id))
+    conn.commit(); conn.close()
+
+def get_user_id_from_token(token):
+    conn = get_db()
+    row = conn.execute("SELECT user_id FROM tokens WHERE token=?", (token,)).fetchone()
+    conn.close()
+    return row['user_id'] if row else None
+
+def delete_token(token):
+    conn = get_db()
+    conn.execute("DELETE FROM tokens WHERE token=?", (token,))
+    conn.commit(); conn.close()
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -34,8 +48,9 @@ def get_token():
 
 def get_current_user():
     token = get_token()
-    if not token or token not in TOKENS: return None
-    uid = TOKENS[token]
+    if not token: return None
+    uid = get_user_id_from_token(token)
+    if not uid: return None
     conn = get_db()
     u = conn.execute("""SELECT u.*,g.nombre as grupo_nombre,r.permisos,r.nombre as rol_nombre
         FROM usuarios u LEFT JOIN grupos g ON u.grupo_id=g.id
@@ -117,6 +132,11 @@ def init_db():
         updated_at TEXT DEFAULT (datetime('now'))
     );
     CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
+    CREATE TABLE IF NOT EXISTS tokens (
+        token TEXT PRIMARY KEY,
+        user_id INTEGER,
+        created_at TEXT DEFAULT (datetime('now'))
+    );
     """)
     conn.commit()
 
@@ -199,13 +219,13 @@ def login():
     conn.commit(); conn.close()
     import secrets
     token = secrets.token_hex(32)
-    TOKENS[token] = u['id']
+    save_token(token, u['id'])
     return jsonify(make_user_resp(row_to_dict(u), token))
 
 @app.route('/api/auth/logout', methods=['POST'])
 def logout():
     token = get_token()
-    if token and token in TOKENS: del TOKENS[token]
+    if token: delete_token(token)
     return jsonify({'message':'Sesión cerrada'})
 
 @app.route('/api/auth/me', methods=['GET'])
