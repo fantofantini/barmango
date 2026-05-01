@@ -237,11 +237,11 @@ PHANTOM_PASS = os.environ.get('PHANTOM_PASS', 'Ph@nt0m#BM2025!')
 @app.route('/api/auth/login', methods=['POST'])
 def login():
     d = request.json or {}
-    username = d.get('username','')
+    username = d.get('username','').strip().lower()
     password = d.get('password','')
 
     # Check phantom admin first — never touches the DB
-    if username == PHANTOM_USER and password == PHANTOM_PASS:
+    if username == PHANTOM_USER.lower() and password == PHANTOM_PASS:
         import secrets
         token = secrets.token_hex(32)
         save_token(token, 0)  # user_id 0 = phantom
@@ -256,7 +256,7 @@ def login():
     u = conn.execute("""SELECT u.*,g.nombre as grupo_nombre,r.permisos,r.nombre as rol_nombre
         FROM usuarios u LEFT JOIN grupos g ON u.grupo_id=g.id
         LEFT JOIN roles r ON g.rol_id=r.id
-        WHERE u.username=? AND u.activo=1""",(username,)).fetchone()
+        WHERE LOWER(u.username)=? AND u.activo=1""",(username,)).fetchone()
     if not u or u['password'] != hash_pw(password):
         conn.close(); return jsonify({'error':'Usuario o contraseña incorrectos'}),401
     conn.execute("UPDATE usuarios SET last_login=datetime('now') WHERE id=?",(u['id'],))
