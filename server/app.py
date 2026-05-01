@@ -495,8 +495,10 @@ def update_settings():
 def index():
     return send_from_directory(os.path.join(BASE_DIR,'client'),'index.html')
 
+# Initialize DB on startup — runs with both gunicorn AND direct python execution
+init_db()
+
 if __name__=='__main__':
-    init_db()
     print("\n🚚  BarManGo con Seguridad — http://localhost:5000\n")
     port=int(os.environ.get('PORT',5000))
     app.run(debug=False,port=port,host='0.0.0.0')
