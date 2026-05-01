@@ -269,7 +269,7 @@ input[readonly]{background:var(--bg-2);color:var(--mid)}
   display: none;
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  height: 60px;
+  height: 62px;
   background: var(--sidebar);
   border-top: 1px solid rgba(255,255,255,.08);
   z-index: 500;
@@ -381,7 +381,8 @@ input[readonly]{background:var(--bg-2);color:var(--mid)}
   .grid-4 { grid-template-columns: 1fr 1fr !important; }
   .kpi-value { font-size: 22px; }
   .cal-day { min-height: 46px; }
-  .bottom-nav-item { font-size: 9px; padding: 4px 6px; }
+  .bottom-nav-item { font-size: 8px; padding: 4px 2px; }
+  .bn-icon { font-size: 17px !important; }
 }
 
 
@@ -1726,13 +1727,13 @@ async function deleteRol() {
     <span class="bn-icon">📊</span>Panel
   </div>
   <div class="bottom-nav-item" data-bpage="jobs" onclick="navTo('jobs')">
-    <span class="bn-icon">📋</span>Encomiendas
+    <span class="bn-icon">📋</span>Envíos
   </div>
   <div class="bottom-nav-item" data-bpage="schedule" onclick="navTo('schedule')">
-    <span class="bn-icon">📅</span>Calendario
+    <span class="bn-icon">📅</span>Agenda
   </div>
   <div class="bottom-nav-item" data-bpage="drivers" onclick="navTo('drivers')">
-    <span class="bn-icon">🚗</span>Mensajeros
+    <span class="bn-icon">🚗</span>Riders
   </div>
   <div class="bottom-nav-item" data-bpage="customers" onclick="navTo('customers')">
     <span class="bn-icon">👥</span>Clientes
@@ -1741,7 +1742,7 @@ async function deleteRol() {
     <span class="bn-icon">📈</span>Reportes
   </div>
   <div class="bottom-nav-item admin-only" data-bpage="security" onclick="navTo('security')" style="display:none">
-    <span class="bn-icon">🔐</span>Seguridad
+    <span class="bn-icon">🔐</span>Admin
   </div>
 </nav>
 
