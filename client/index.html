@@ -869,7 +869,8 @@ function onLoginSuccess() {
   document.querySelectorAll('.admin-only').forEach(el => {
     el.style.display = isAdmin ? '' : 'none';
   });
-  loadDashboard();
+  // Always go to dashboard on login regardless of previous page
+  navTo('dashboard');
   document.getElementById('api-status').textContent = '🟢 Conectado';
 }
 
@@ -881,6 +882,15 @@ async function doLogout() {
   localStorage.removeItem('barmango_token');
   document.getElementById('user-info').innerHTML = '';
   document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
+  // Reset to dashboard page so next login always starts fresh
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.bottom-nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('pg-dashboard').classList.add('active');
+  document.querySelector('[data-page="dashboard"]')?.classList.add('active');
+  document.querySelector('[data-bpage="dashboard"]')?.classList.add('active');
+  document.getElementById('page-title').textContent = 'Panel Principal';
+  document.getElementById('topbar-right').innerHTML = '';
   showLogin();
 }
 
@@ -938,7 +948,12 @@ function loadPage(p) {
   if (p==='drivers')   loadDrivers();
   if (p==='customers') loadCustomers();
   if (p==='reports')   {} // static page
-  if (p==='security')  loadSecurity();
+  if (p==='security') {
+    if (!currentUser || !currentUser.permisos || !currentUser.permisos.admin) {
+      navTo('dashboard'); return;
+    }
+    loadSecurity();
+  }
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
