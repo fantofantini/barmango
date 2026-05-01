@@ -509,13 +509,22 @@ def update_settings():
     for k,v in request.json.items(): conn.execute("INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)",(k,v))
     conn.commit(); conn.close(); return jsonify({'message':'Saved'})
 
+# ── Initialize DB on first request (after volume is mounted) ──────────────────
+_db_initialized = False
+
+@app.before_request
+def ensure_db():
+    global _db_initialized
+    if not _db_initialized:
+        init_db()
+        _db_initialized = True
+
 # ── Serve frontend ─────────────────────────────────────────────────────────────
 @app.route('/')
 def index():
     return send_from_directory(os.path.join(BASE_DIR,'client'),'index.html')
 
-# Initialize DB on startup — runs with both gunicorn AND direct python execution
-init_db()
+# DB will be initialized on first request via before_request hook
 
 if __name__=='__main__':
     print("\n🚚  BarManGo con Seguridad — http://localhost:5000\n")
