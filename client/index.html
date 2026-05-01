@@ -445,7 +445,7 @@ input[readonly]{background:var(--bg-2);color:var(--mid)}
 <div class="main">
   <div class="topbar">
     <div class="topbar-left">
-      <div class="page-title" id="page-title">Panel Principal</div>
+      <div class="page-title" id="page-title">Panel Principal <span id="build-time" style="font-size:11px;font-weight:400;color:var(--muted)">(2026-05-01 02:48)</span></div>
     </div>
     <div class="topbar-right" id="topbar-right"></div>
   </div>
@@ -889,7 +889,7 @@ async function doLogout() {
   document.getElementById('pg-dashboard').classList.add('active');
   document.querySelector('[data-page="dashboard"]')?.classList.add('active');
   document.querySelector('[data-bpage="dashboard"]')?.classList.add('active');
-  document.getElementById('page-title').textContent = 'Panel Principal';
+  document.getElementById('page-title').innerHTML = 'Panel Principal <span id="build-time" style="font-size:11px;font-weight:400;color:var(--muted)">(' + (document.getElementById('build-time')?.textContent.replace(/[()]/g,'').trim() || '') + ')</span>';
   document.getElementById('topbar-right').innerHTML = '';
   showLogin();
 }
@@ -935,7 +935,7 @@ function navTo(page) {
   document.getElementById(`pg-${page}`).classList.add('active');
   document.querySelector(`[data-page="${page}"]`)?.classList.add('active');
   document.querySelector(`[data-bpage="${page}"]`)?.classList.add('active');
-  document.getElementById('page-title').textContent = TITLES[page];
+  document.getElementById('page-title').innerHTML = TITLES[page] + ' <span id="build-time" style="font-size:11px;font-weight:400;color:var(--muted)">(' + document.getElementById('build-time')?.textContent.replace(/[()]/g,'').trim() + ')</span>';
   document.getElementById('topbar-right').innerHTML = (ACTIONS[page]||'')();
   curPage = page;
   loadPage(page);
