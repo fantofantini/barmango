@@ -794,15 +794,21 @@ input[readonly]{background:var(--bg-2);color:var(--mid)}
 <script>
 const API = '/api';
 let currentUser = null;
+let authToken = localStorage.getItem('barmango_token') || null;
 
 // ── AUTH ──────────────────────────────────────────────────────────────────
 async function checkAuth() {
+  if (!authToken) { showLogin(); return; }
   try {
-    const r = await fetch(API + '/auth/me', {credentials:'include'});
+    const r = await fetch(API + '/auth/me', {
+      headers: {'X-Auth-Token': authToken}
+    });
     if (r.ok) {
       currentUser = await r.json();
       onLoginSuccess();
     } else {
+      authToken = null;
+      localStorage.removeItem('barmango_token');
       showLogin();
     }
   } catch { showLogin(); }
@@ -810,7 +816,7 @@ async function checkAuth() {
 
 function showLogin() {
   document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('login-username').focus();
+  setTimeout(() => document.getElementById('login-username').focus(), 100);
 }
 
 function hideLogin() {
@@ -824,27 +830,31 @@ async function doLogin() {
   const btn = document.getElementById('login-btn');
 
   if (!username || !password) {
-    errEl.textContent = 'Ingresa usuario y contraseña'; errEl.style.display = 'block'; return;
+    errEl.textContent = 'Ingresa usuario y contraseña';
+    errEl.style.display = 'block'; return;
   }
 
   btn.textContent = 'Ingresando…'; btn.disabled = true;
+  errEl.style.display = 'none';
+
   try {
     const r = await fetch(API + '/auth/login', {
-      method:'POST', credentials:'include',
-      headers:{'Content-Type':'application/json'},
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({username, password})
     });
+    const data = await r.json();
     if (r.ok) {
-      currentUser = await r.json();
-      errEl.style.display = 'none';
+      currentUser = data;
+      authToken = data.token;
+      localStorage.setItem('barmango_token', authToken);
       hideLogin();
       onLoginSuccess();
     } else {
-      const e = await r.json();
-      errEl.textContent = e.error || 'Error al iniciar sesión';
+      errEl.textContent = data.error || 'Error al iniciar sesión';
       errEl.style.display = 'block';
     }
-  } catch {
+  } catch(e) {
     errEl.textContent = 'Error de conexión con el servidor';
     errEl.style.display = 'block';
   }
@@ -852,25 +862,23 @@ async function doLogin() {
 }
 
 function onLoginSuccess() {
-  // Show user info in sidebar
   document.getElementById('user-info').innerHTML =
     `<strong style="color:rgba(255,255,255,.9)">${currentUser.nombre}</strong><br>
-     <span style="font-size:10px">${currentUser.rol || ''} · ${currentUser.grupo || ''}</span>`;
-
-  // Show/hide admin items
+     <span style="font-size:10px">${currentUser.rol||''} · ${currentUser.grupo||''}</span>`;
   const isAdmin = currentUser.permisos && currentUser.permisos.admin;
   document.querySelectorAll('.admin-only').forEach(el => {
     el.style.display = isAdmin ? '' : 'none';
   });
-
-  // Load dashboard
   loadDashboard();
   document.getElementById('api-status').textContent = '🟢 Conectado';
 }
 
 async function doLogout() {
-  await fetch(API + '/auth/logout', {method:'POST', credentials:'include'});
-  currentUser = null;
+  if (authToken) {
+    await fetch(API + '/auth/logout', {method:'POST', headers:{'X-Auth-Token':authToken}}).catch(()=>{});
+  }
+  authToken = null; currentUser = null;
+  localStorage.removeItem('barmango_token');
   document.getElementById('user-info').innerHTML = '';
   document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
   showLogin();
@@ -878,10 +886,12 @@ async function doLogout() {
 
 // ── API helper ─────────────────────────────────────────────────────────────
 async function api(path, method='GET', body=null) {
-  const opts = { method, headers: {'Content-Type':'application/json'}, credentials:'include' };
+  const headers = {'Content-Type':'application/json'};
+  if (authToken) headers['X-Auth-Token'] = authToken;
+  const opts = { method, headers };
   if (body) opts.body = JSON.stringify(body);
   const r = await fetch(API + path, opts);
-  if (r.status === 401) { showLogin(); throw new Error('No autorizado'); }
+  if (r.status === 401) { doLogout(); throw new Error('No autorizado'); }
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
