@@ -147,6 +147,17 @@ def init_db():
         user_id INTEGER,
         created_at TEXT DEFAULT (datetime('now'))
     );
+
+    -- Indexes for performance
+    CREATE INDEX IF NOT EXISTS idx_jobs_status      ON jobs(status);
+    CREATE INDEX IF NOT EXISTS idx_jobs_pu_date     ON jobs(pu_date);
+    CREATE INDEX IF NOT EXISTS idx_jobs_customer_id ON jobs(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_jobs_driver_id   ON jobs(driver_id);
+    CREATE INDEX IF NOT EXISTS idx_jobs_created_at  ON jobs(created_at);
+    CREATE INDEX IF NOT EXISTS idx_customers_name   ON customers(name);
+    CREATE INDEX IF NOT EXISTS idx_drivers_name     ON drivers(name);
+    CREATE INDEX IF NOT EXISTS idx_usuarios_username ON usuarios(username);
+    CREATE INDEX IF NOT EXISTS idx_tokens_user_id   ON tokens(user_id);
     """)
     conn.commit()
     print('[INIT] Tables created successfully')
