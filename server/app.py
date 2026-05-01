@@ -142,6 +142,10 @@ def init_db():
     );
     """)
     conn.commit()
+    conn.close()
+
+    # Re-open connection for inserts to ensure clean state
+    conn = get_db(); c = conn.cursor()
 
     # Always insert default roles/groups/users with OR IGNORE so they persist on Railway
     c.executemany("INSERT OR IGNORE INTO roles (id,nombre,descripcion,permisos) VALUES (?,?,?,?)",[
