@@ -13,7 +13,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 app = Flask(__name__, static_folder=os.path.join(BASE_DIR, 'client'), static_url_path='')
 CORS(app, supports_credentials=True)
 
-DB_PATH = os.path.join(BASE_DIR, 'db', 'delivery.db')
+# DB path - /app/db is where the Railway volume is mounted
+_db_dir = os.environ.get('DB_DIR', '/app/db')
+os.makedirs(_db_dir, exist_ok=True)
+DB_PATH = os.path.join(_db_dir, 'delivery.db')
 
 # Token stored in DB to survive gunicorn restarts
 def save_token(token, user_id):
@@ -83,7 +86,7 @@ def make_user_resp(u, token=None):
     return d
 
 def init_db():
-    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    print(f'Using database at: {DB_PATH}')
     conn = get_db(); c = conn.cursor()
     c.executescript("""
     CREATE TABLE IF NOT EXISTS roles (
