@@ -140,22 +140,27 @@ def init_db():
     """)
     conn.commit()
 
-    if c.execute("SELECT COUNT(*) FROM roles").fetchone()[0] == 0:
-        c.executemany("INSERT INTO roles (nombre,descripcion,permisos) VALUES (?,?,?)",[
-            ("Administrador","Acceso total al sistema",'{"admin":true,"jobs":true,"drivers":true,"customers":true,"reports":true,"security":true}'),
-            ("Operador","Acceso operativo completo",'{"admin":false,"jobs":true,"drivers":true,"customers":true,"reports":true,"security":false}'),
-            ("Mensajero","Solo encomiendas asignadas",'{"admin":false,"jobs":true,"drivers":false,"customers":false,"reports":false,"security":false}'),
-            ("Supervisor","Visualización y reportes",'{"admin":false,"jobs":true,"drivers":true,"customers":true,"reports":true,"security":false}'),
-        ])
-        c.executemany("INSERT INTO grupos (nombre,descripcion,rol_id) VALUES (?,?,?)",[
-            ("Administradores","Grupo administrativo",1),
-            ("Operaciones","Equipo de operaciones",2),
-            ("Mensajeros","Equipo en campo",3),
-            ("Supervisores","Supervisión general",4),
-        ])
-        c.execute("INSERT INTO usuarios (nombre,username,email,password,grupo_id,activo) VALUES (?,?,?,?,?,?)",
-            ("Administrador","admin","admin@barmango.ec",hash_pw("admin123"),1,1))
-        conn.commit()
+    # Always insert default roles/groups/users with OR IGNORE so they persist on Railway
+    c.executemany("INSERT OR IGNORE INTO roles (id,nombre,descripcion,permisos) VALUES (?,?,?,?)",[
+        (1,"Administrador","Acceso total al sistema",'{"admin":true,"jobs":true,"drivers":true,"customers":true,"reports":true,"security":true}'),
+        (2,"Operador","Acceso operativo completo",'{"admin":false,"jobs":true,"drivers":true,"customers":true,"reports":true,"security":false}'),
+        (3,"Mensajero","Solo encomiendas asignadas",'{"admin":false,"jobs":true,"drivers":false,"customers":false,"reports":false,"security":false}'),
+        (4,"Supervisor","Visualización y reportes",'{"admin":false,"jobs":true,"drivers":true,"customers":true,"reports":true,"security":false}'),
+    ])
+    c.executemany("INSERT OR IGNORE INTO grupos (id,nombre,descripcion,rol_id) VALUES (?,?,?,?)",[
+        (1,"Administradores","Grupo administrativo",1),
+        (2,"Operaciones","Equipo de operaciones",2),
+        (3,"Mensajeros","Equipo en campo",3),
+        (4,"Supervisores","Supervisión general",4),
+    ])
+    c.executemany("INSERT OR IGNORE INTO usuarios (id,nombre,username,email,password,grupo_id,activo) VALUES (?,?,?,?,?,?,?)",[
+        (1,"Administrador","admin","admin@barmango.ec",hash_pw("admin123"),1,1),
+        (2,"Juan Operador","juan.operador","juan@barmango.ec",hash_pw("operador123"),2,1),
+        (3,"Pedro Mensajero","pedro.mensajero","pedro@barmango.ec",hash_pw("mensajero123"),3,1),
+        (4,"Laura Supervisora","laura.supervisora","laura@barmango.ec",hash_pw("supervisor123"),4,1),
+        (5,"María Operadora","maria.operadora","maria@barmango.ec",hash_pw("operador123"),2,1),
+    ])
+    conn.commit()
 
     if c.execute("SELECT COUNT(*) FROM drivers").fetchone()[0] == 0:
         c.executemany("INSERT INTO drivers (name,phone,email,address,city,state,zip,notes) VALUES (?,?,?,?,?,?,?,?)",[
