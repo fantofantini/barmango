@@ -1420,6 +1420,175 @@ async function downloadExcel(type) {
   }
 }
 
+
+// ── SECURITY ──────────────────────────────────────────────────────────────────
+
+async function loadSecurity() {
+  try {
+    const [usuarios, grupos, roles] = await Promise.all([
+      api('/usuarios'), api('/grupos'), api('/roles')
+    ]);
+    document.getElementById('tbody-usuarios').innerHTML = usuarios.length
+      ? usuarios.map(u => `<tr onclick="openUserModal(${u.id})">
+          <td class="mono">${u.id}</td><td><strong>${u.nombre}</strong></td>
+          <td style="font-family:var(--mono);font-size:12px">${u.username}</td>
+          <td style="font-size:12px">${u.email||'—'}</td>
+          <td>${u.grupo_nombre||'—'}</td><td>${u.rol_nombre||'—'}</td>
+          <td>${u.activo ? '<span class="badge s-Delivered">Activo</span>' : '<span class="badge s-Closed">Inactivo</span>'}</td>
+          <td style="font-size:11px;color:var(--muted)">${u.last_login ? u.last_login.substring(0,10) : '—'}</td>
+          <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openUserModal(${u.id})">Editar</button></td>
+        </tr>`).join('')
+      : '<tr><td colspan="9"><div class="empty"><div class="ei">👤</div><p>No hay usuarios</p></div></td></tr>';
+
+    document.getElementById('tbody-grupos').innerHTML = grupos.length
+      ? grupos.map(g => `<tr onclick="openGrupoModal(${g.id})">
+          <td><strong>${g.nombre}</strong><br><span style="font-size:11px;color:var(--muted)">${g.descripcion||''}</span></td>
+          <td>${g.rol_nombre||'—'}</td>
+          <td><span style="font-family:var(--mono);font-weight:700;color:var(--blue)">${g.usuario_count}</span></td>
+          <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openGrupoModal(${g.id})">Editar</button></td>
+        </tr>`).join('')
+      : '<tr><td colspan="4"><div class="empty"><div class="ei">👥</div><p>No hay grupos</p></div></td></tr>';
+
+    document.getElementById('tbody-roles').innerHTML = roles.length
+      ? roles.map(r => `<tr onclick="openRolModal(${r.id})">
+          <td><strong>${r.nombre}</strong></td>
+          <td style="font-size:12px;color:var(--muted)">${r.descripcion||'—'}</td>
+          <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openRolModal(${r.id})">Editar</button></td>
+        </tr>`).join('')
+      : '<tr><td colspan="3"><div class="empty"><div class="ei">🛡</div><p>No hay roles</p></div></td></tr>';
+  } catch(e) { console.error('Security load error:', e); }
+}
+
+let editUserId = null;
+async function openUserModal(id=null) {
+  editUserId = id;
+  const grupos = await api('/grupos');
+  document.getElementById('u-grupo').innerHTML = '<option value="">Sin grupo</option>' +
+    grupos.map(g => `<option value="${g.id}">${g.nombre}</option>`).join('');
+  if (id) {
+    const users = await api('/usuarios');
+    const u = users.find(x => x.id === id);
+    if (!u) return;
+    document.getElementById('user-modal-title').textContent = `Editar: ${u.nombre}`;
+    document.getElementById('u-nombre').value = u.nombre;
+    document.getElementById('u-username').value = u.username;
+    document.getElementById('u-email').value = u.email||'';
+    document.getElementById('u-password').value = '';
+    document.getElementById('u-activo').value = u.activo;
+    const grupo = grupos.find(g => g.nombre === u.grupo_nombre);
+    document.getElementById('u-grupo').value = grupo ? grupo.id : '';
+    document.getElementById('btn-del-user').style.display = 'inline-flex';
+  } else {
+    document.getElementById('user-modal-title').textContent = 'Nuevo Usuario';
+    ['u-nombre','u-username','u-email','u-password'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('u-activo').value = '1';
+    document.getElementById('u-grupo').value = '';
+    document.getElementById('btn-del-user').style.display = 'none';
+  }
+  document.getElementById('ov-user').classList.add('open');
+}
+async function saveUsuario() {
+  const nombre = document.getElementById('u-nombre').value.trim();
+  const username = document.getElementById('u-username').value.trim();
+  if (!nombre || !username) { toast('Nombre y usuario son requeridos','err'); return; }
+  const body = { nombre, username, email: document.getElementById('u-email').value,
+    password: document.getElementById('u-password').value,
+    grupo_id: parseInt(document.getElementById('u-grupo').value)||null,
+    activo: parseInt(document.getElementById('u-activo').value) };
+  try {
+    if (editUserId) { await api(`/usuarios/${editUserId}`,'PUT',body); toast('¡Usuario actualizado!'); }
+    else { await api('/usuarios','POST',body); toast('¡Usuario creado!'); }
+    closeModal('ov-user'); loadSecurity();
+  } catch(e) { toast('Error: '+e.message,'err'); }
+}
+async function deleteUsuario() {
+  if (!confirm('¿Eliminar este usuario?')) return;
+  await api(`/usuarios/${editUserId}`,'DELETE');
+  closeModal('ov-user'); toast('Usuario eliminado'); loadSecurity();
+}
+
+let editGrupoId = null;
+async function openGrupoModal(id=null) {
+  editGrupoId = id;
+  const roles = await api('/roles');
+  document.getElementById('g-rol').innerHTML = '<option value="">Sin rol</option>' +
+    roles.map(r => `<option value="${r.id}">${r.nombre}</option>`).join('');
+  if (id) {
+    const grupos = await api('/grupos');
+    const g = grupos.find(x => x.id === id);
+    if (!g) return;
+    document.getElementById('grupo-modal-title').textContent = `Editar: ${g.nombre}`;
+    document.getElementById('g-nombre').value = g.nombre;
+    document.getElementById('g-desc').value = g.descripcion||'';
+    const rol = roles.find(r => r.nombre === g.rol_nombre);
+    document.getElementById('g-rol').value = rol ? rol.id : '';
+    document.getElementById('btn-del-grupo').style.display = 'inline-flex';
+  } else {
+    document.getElementById('grupo-modal-title').textContent = 'Nuevo Grupo';
+    ['g-nombre','g-desc'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('g-rol').value = '';
+    document.getElementById('btn-del-grupo').style.display = 'none';
+  }
+  document.getElementById('ov-grupo').classList.add('open');
+}
+async function saveGrupo() {
+  const nombre = document.getElementById('g-nombre').value.trim();
+  if (!nombre) { toast('Nombre es requerido','err'); return; }
+  const body = { nombre, descripcion: document.getElementById('g-desc').value,
+    rol_id: parseInt(document.getElementById('g-rol').value)||null };
+  if (editGrupoId) { await api(`/grupos/${editGrupoId}`,'PUT',body); toast('¡Grupo actualizado!'); }
+  else { await api('/grupos','POST',body); toast('¡Grupo creado!'); }
+  closeModal('ov-grupo'); loadSecurity();
+}
+async function deleteGrupo() {
+  if (!confirm('¿Eliminar este grupo?')) return;
+  await api(`/grupos/${editGrupoId}`,'DELETE');
+  closeModal('ov-grupo'); toast('Grupo eliminado'); loadSecurity();
+}
+
+let editRolId = null;
+async function openRolModal(id=null) {
+  editRolId = id;
+  if (id) {
+    const roles = await api('/roles');
+    const r = roles.find(x => x.id === id);
+    if (!r) return;
+    document.getElementById('rol-modal-title').textContent = `Editar: ${r.nombre}`;
+    document.getElementById('r-nombre').value = r.nombre;
+    document.getElementById('r-desc').value = r.descripcion||'';
+    const p = JSON.parse(r.permisos||'{}');
+    ['jobs','drivers','customers','reports','security','admin'].forEach(k => {
+      document.getElementById(`p-${k}`).checked = !!p[k];
+    });
+    document.getElementById('btn-del-rol').style.display = 'inline-flex';
+  } else {
+    document.getElementById('rol-modal-title').textContent = 'Nuevo Rol';
+    ['r-nombre','r-desc'].forEach(i => document.getElementById(i).value = '');
+    ['jobs','drivers','customers','reports','security','admin'].forEach(k => {
+      document.getElementById(`p-${k}`).checked = false;
+    });
+    document.getElementById('btn-del-rol').style.display = 'none';
+  }
+  document.getElementById('ov-rol').classList.add('open');
+}
+async function saveRol() {
+  const nombre = document.getElementById('r-nombre').value.trim();
+  if (!nombre) { toast('Nombre es requerido','err'); return; }
+  const permisos = {};
+  ['jobs','drivers','customers','reports','security','admin'].forEach(k => {
+    permisos[k] = document.getElementById(`p-${k}`).checked;
+  });
+  const body = { nombre, descripcion: document.getElementById('r-desc').value, permisos };
+  if (editRolId) { await api(`/roles/${editRolId}`,'PUT',body); toast('¡Rol actualizado!'); }
+  else { await api('/roles','POST',body); toast('¡Rol creado!'); }
+  closeModal('ov-rol'); loadSecurity();
+}
+async function deleteRol() {
+  if (!confirm('¿Eliminar este rol?')) return;
+  await api(`/roles/${editRolId}`,'DELETE');
+  closeModal('ov-rol'); toast('Rol eliminado'); loadSecurity();
+}
+
 </script>
 
 
