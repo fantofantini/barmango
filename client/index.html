@@ -866,12 +866,58 @@ function onLoginSuccess() {
   document.getElementById('user-info').innerHTML =
     `<strong style="color:rgba(255,255,255,.9)">${currentUser.nombre}</strong><br>
      <span style="font-size:10px">${currentUser.rol||''} · ${currentUser.grupo||''}</span>`;
-  const isAdmin = currentUser.permisos && currentUser.permisos.admin;
+
+  const p = currentUser.permisos || {};
+  const isAdmin = !!p.admin;
+
+  // Apply menu visibility based on permissions
+  const menuMap = {
+    'dashboard': true,           // everyone sees dashboard
+    'jobs':      !!p.jobs,
+    'schedule':  !!p.jobs,       // schedule follows jobs permission
+    'drivers':   !!p.drivers,
+    'customers': !!p.customers,
+    'reports':   !!p.reports,
+    'security':  isAdmin,
+  };
+
+  // Show/hide sidebar nav items
+  document.querySelectorAll('.nav-item[data-page]').forEach(el => {
+    const page = el.getAttribute('data-page');
+    el.style.display = (menuMap[page] !== false) ? '' : 'none';
+  });
+
+  // Show/hide bottom nav items
+  document.querySelectorAll('.bottom-nav-item[data-bpage]').forEach(el => {
+    const page = el.getAttribute('data-bpage');
+    el.style.display = (menuMap[page] !== false) ? '' : 'none';
+  });
+
+  // Show/hide admin-only section labels
   document.querySelectorAll('.admin-only').forEach(el => {
     el.style.display = isAdmin ? '' : 'none';
   });
-  // Always go to dashboard on login regardless of previous page
-  navTo('dashboard');
+
+  // Hide nav group labels if all items in group are hidden
+  document.querySelectorAll('.nav-group-label').forEach(label => {
+    let next = label.nextElementSibling;
+    let allHidden = true;
+    while (next && !next.classList.contains('nav-group-label')) {
+      if (next.style.display !== 'none') { allHidden = false; break; }
+      next = next.nextElementSibling;
+    }
+    label.style.display = allHidden ? 'none' : '';
+  });
+
+  // Navigate to first allowed page
+  if (isAdmin || p.jobs) {
+    navTo('dashboard');
+  } else if (p.jobs) {
+    navTo('jobs');
+  } else {
+    navTo('dashboard');
+  }
+
   document.getElementById('api-status').textContent = '🟢 Conectado';
 }
 
@@ -955,6 +1001,13 @@ function loadPage(p) {
     }
     loadSecurity();
   }
+  // Block unauthorized pages
+  const _p = currentUser ? (currentUser.permisos || {}) : {};
+  if (p==='drivers'   && !_p.drivers)   { navTo('dashboard'); return; }
+  if (p==='customers' && !_p.customers) { navTo('dashboard'); return; }
+  if (p==='reports'   && !_p.reports)   { navTo('dashboard'); return; }
+  if (p==='jobs'      && !_p.jobs)      { navTo('dashboard'); return; }
+  if (p==='schedule'  && !_p.jobs)      { navTo('dashboard'); return; }
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
