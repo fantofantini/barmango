@@ -1562,7 +1562,8 @@ async function saveUsuario() {
   if (!nombre || !username) { toast('Nombre y usuario son requeridos','err'); return; }
   const body = { nombre, username, email: document.getElementById('u-email').value,
     password: document.getElementById('u-password').value,
-    grupo_id: parseInt(document.getElementById('u-grupo').value)||null,
+    grupo_id:  parseInt(document.getElementById('u-grupo').value)||null,
+
     activo: parseInt(document.getElementById('u-activo').value) };
   try {
     if (editUserId) { await api(`/usuarios/${editUserId}`,'PUT',body); toast('¡Usuario actualizado!'); }
