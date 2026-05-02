@@ -64,8 +64,21 @@ def get_current_user():
     u = conn.execute("""SELECT u.*,g.nombre as grupo_nombre,r.permisos,r.nombre as rol_nombre
         FROM usuarios u LEFT JOIN grupos g ON u.grupo_id=g.id
         LEFT JOIN roles r ON g.rol_id=r.id WHERE u.id=? AND u.activo=1""",(uid,)).fetchone()
+    if not u:
+        conn.close(); return None
+    user = row_to_dict(u)
+    # Auto-match driver by name if user is in Mensajeros group and has no driver_id set
+    if user.get('grupo_nombre') == 'Mensajeros' and not user.get('driver_id'):
+        driver = conn.execute(
+            "SELECT id FROM drivers WHERE LOWER(name)=LOWER(?)", (user['nombre'],)
+        ).fetchone()
+        if driver:
+            user['driver_id'] = driver['id']
+            # Save it for future lookups
+            conn.execute("UPDATE usuarios SET driver_id=? WHERE id=?", (driver['id'], uid))
+            conn.commit()
     conn.close()
-    return row_to_dict(u)
+    return user
 
 def require_auth(f):
     @wraps(f)
@@ -113,6 +126,7 @@ def init_db():
         nombre TEXT NOT NULL, username TEXT NOT NULL UNIQUE,
         email TEXT, password TEXT NOT NULL,
         grupo_id INTEGER REFERENCES grupos(id),
+        driver_id INTEGER REFERENCES drivers(id),
         activo INTEGER DEFAULT 1,
         created_at TEXT DEFAULT (datetime('now')), last_login TEXT
     );
@@ -180,12 +194,12 @@ def init_db():
         (4,"Supervisores","Supervisión general",4),
     ])
     print('[INIT] Inserting default users/roles/groups...')
-    c.executemany("INSERT OR IGNORE INTO usuarios (id,nombre,username,email,password,grupo_id,activo) VALUES (?,?,?,?,?,?,?)",[
-        (1,"Administrador","admin","admin@barmango.ec",hash_pw("admin123"),1,1),
-        (2,"Juan Operador","juan.operador","juan@barmango.ec",hash_pw("operador123"),2,1),
-        (3,"Pedro Mensajero","pedro.mensajero","pedro@barmango.ec",hash_pw("mensajero123"),3,1),
-        (4,"Laura Supervisora","laura.supervisora","laura@barmango.ec",hash_pw("supervisor123"),4,1),
-        (5,"María Operadora","maria.operadora","maria@barmango.ec",hash_pw("operador123"),2,1),
+    c.executemany("INSERT OR IGNORE INTO usuarios (id,nombre,username,email,password,grupo_id,driver_id,activo) VALUES (?,?,?,?,?,?,?,?)",[
+        (1,"Administrador","admin","admin@barmango.ec",hash_pw("admin123"),1,None,1),
+        (2,"Juan Operador","juan.operador","juan@barmango.ec",hash_pw("operador123"),2,None,1),
+        (3,"Pedro Mensajero","pedro.mensajero","pedro@barmango.ec",hash_pw("mensajero123"),3,3,1),
+        (4,"Laura Supervisora","laura.supervisora","laura@barmango.ec",hash_pw("supervisor123"),4,None,1),
+        (5,"María Operadora","maria.operadora","maria@barmango.ec",hash_pw("operador123"),2,None,1),
     ])
     conn.commit()
     role_count = c.execute("SELECT COUNT(*) FROM roles").fetchone()[0]
@@ -349,7 +363,7 @@ def delete_grupo(gid):
 def get_usuarios():
     conn=get_db()
     rows=rows_to_list(conn.execute("""SELECT u.id,u.nombre,u.username,u.email,u.activo,u.created_at,u.last_login,
-        g.nombre as grupo_nombre,r.nombre as rol_nombre FROM usuarios u
+        u.driver_id, g.nombre as grupo_nombre,r.nombre as rol_nombre FROM usuarios u
         LEFT JOIN grupos g ON u.grupo_id=g.id LEFT JOIN roles r ON g.rol_id=r.id ORDER BY u.nombre""").fetchall())
     conn.close(); return jsonify(rows)
 
@@ -360,8 +374,8 @@ def create_usuario():
     if not d.get('password'): return jsonify({'error':'Contraseña requerida'}),400
     conn=get_db()
     try:
-        cur=conn.execute("INSERT INTO usuarios (nombre,username,email,password,grupo_id,activo) VALUES (?,?,?,?,?,?)",
-            (d['nombre'],d['username'],d.get('email',''),hash_pw(d['password']),d.get('grupo_id'),1))
+        cur=conn.execute("INSERT INTO usuarios (nombre,username,email,password,grupo_id,driver_id,activo) VALUES (?,?,?,?,?,?,?)",
+            (d['nombre'],d['username'],d.get('email',''),hash_pw(d['password']),d.get('grupo_id'),d.get('driver_id'),1))
         conn.commit(); conn.close(); return jsonify({'id':cur.lastrowid}),201
     except: conn.close(); return jsonify({'error':'El usuario ya existe'}),400
 
@@ -370,11 +384,11 @@ def create_usuario():
 def update_usuario(uid):
     d=request.json; conn=get_db()
     if d.get('password'):
-        conn.execute("UPDATE usuarios SET nombre=?,username=?,email=?,password=?,grupo_id=?,activo=? WHERE id=?",
-            (d['nombre'],d['username'],d.get('email',''),hash_pw(d['password']),d.get('grupo_id'),d.get('activo',1),uid))
+        conn.execute("UPDATE usuarios SET nombre=?,username=?,email=?,password=?,grupo_id=?,driver_id=?,activo=? WHERE id=?",
+            (d['nombre'],d['username'],d.get('email',''),hash_pw(d['password']),d.get('grupo_id'),d.get('driver_id'),d.get('activo',1),uid))
     else:
-        conn.execute("UPDATE usuarios SET nombre=?,username=?,email=?,grupo_id=?,activo=? WHERE id=?",
-            (d['nombre'],d['username'],d.get('email',''),d.get('grupo_id'),d.get('activo',1),uid))
+        conn.execute("UPDATE usuarios SET nombre=?,username=?,email=?,grupo_id=?,driver_id=?,activo=? WHERE id=?",
+            (d['nombre'],d['username'],d.get('email',''),d.get('grupo_id'),d.get('driver_id'),d.get('activo',1),uid))
     conn.commit(); conn.close(); return jsonify({'message':'Actualizado'})
 
 @app.route('/api/usuarios/<int:uid>', methods=['DELETE'])
@@ -389,8 +403,13 @@ def delete_usuario(uid):
 @require_auth
 def get_jobs():
     conn=get_db()
+    u = get_current_user()
+    permisos = json.loads(u.get('permisos') or '{}') if u else {}
     q="SELECT j.*,c.name as customer_name,c.phone as customer_phone,d.name as driver_name FROM jobs j LEFT JOIN customers c ON j.customer_id=c.id LEFT JOIN drivers d ON j.driver_id=d.id WHERE 1=1"
     p=[]
+    # If mensajero role, only show their own jobs
+    if not permisos.get('admin') and not permisos.get('drivers') and u and u.get('driver_id'):
+        q+=" AND j.driver_id=?"; p.append(u['driver_id'])
     if request.args.get('status'): q+=" AND j.status=?"; p.append(request.args['status'])
     if request.args.get('search'):
         s=request.args['search']; q+=" AND (c.name LIKE ? OR d.name LIKE ? OR CAST(j.id AS TEXT) LIKE ?)"; p+=[f'%{s}%']*3
@@ -507,14 +526,23 @@ def delete_customer(cid):
 @require_auth
 def get_stats():
     conn=get_db()
-    sc={s:conn.execute("SELECT COUNT(*) FROM jobs WHERE status=?",(s,)).fetchone()[0] for s in ['Pendiente','Programado','Recogido','Entregado','Cerrado']}
-    rows=rows_to_list(conn.execute("""SELECT j.id,j.status,j.pu_date,j.del_date,j.del_address,j.costo_servicio,
+    u = get_current_user()
+    permisos = json.loads(u.get('permisos') or '{}') if u else {}
+    is_mensajero = not permisos.get('admin') and not permisos.get('drivers') and u and u.get('driver_id')
+    driver_id = u.get('driver_id') if is_mensajero else None
+
+    # Build WHERE clause for driver filter
+    where = f" AND j.driver_id={driver_id}" if driver_id else ""
+    dwhere = f" WHERE driver_id={driver_id}" if driver_id else ""
+
+    sc={s:conn.execute(f"SELECT COUNT(*) FROM jobs j WHERE j.status=?{where}",(s,)).fetchone()[0] for s in ['Pendiente','Programado','Recogido','Entregado','Cerrado']}
+    rows=rows_to_list(conn.execute(f"""SELECT j.id,j.status,j.pu_date,j.del_date,j.del_address,j.costo_servicio,
         c.name as customer_name,d.name as driver_name FROM jobs j
         LEFT JOIN customers c ON j.customer_id=c.id LEFT JOIN drivers d ON j.driver_id=d.id
-        ORDER BY j.id DESC LIMIT 8""").fetchall())
+        WHERE 1=1{where} ORDER BY j.id DESC LIMIT 8""").fetchall())
     td=rows_to_list(conn.execute("SELECT d.name,COUNT(j.id) as job_count FROM drivers d LEFT JOIN jobs j ON j.driver_id=d.id GROUP BY d.id ORDER BY job_count DESC LIMIT 6").fetchall())
-    ti=conn.execute("SELECT COALESCE(SUM(costo_servicio),0) FROM jobs").fetchone()[0]
-    tj=conn.execute("SELECT COUNT(*) FROM jobs").fetchone()[0]
+    ti=conn.execute(f"SELECT COALESCE(SUM(costo_servicio),0) FROM jobs j WHERE 1=1{where}").fetchone()[0]
+    tj=conn.execute(f"SELECT COUNT(*) FROM jobs j WHERE 1=1{where}").fetchone()[0]
     tdr=conn.execute("SELECT COUNT(*) FROM drivers").fetchone()[0]
     tc=conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0]
     conn.close()
@@ -526,9 +554,13 @@ def get_stats():
 def get_schedule():
     yr=request.args.get('year',datetime.now().year); mo=request.args.get('month',datetime.now().month)
     conn=get_db()
-    rows=rows_to_list(conn.execute("""SELECT j.id,j.status,j.pu_date,j.pu_time,j.del_date,c.name as customer_name,d.name as driver_name
+    u = get_current_user()
+    permisos = json.loads(u.get('permisos') or '{}') if u else {}
+    is_mensajero = not permisos.get('admin') and not permisos.get('drivers') and u and u.get('driver_id')
+    driver_filter = f" AND j.driver_id={u.get('driver_id')}" if is_mensajero else ""
+    rows=rows_to_list(conn.execute(f"""SELECT j.id,j.status,j.pu_date,j.pu_time,j.del_date,c.name as customer_name,d.name as driver_name
         FROM jobs j LEFT JOIN customers c ON j.customer_id=c.id LEFT JOIN drivers d ON j.driver_id=d.id
-        WHERE strftime('%Y',j.pu_date)=? AND strftime('%m',j.pu_date)=? ORDER BY j.pu_date,j.pu_time""",(str(yr),str(mo).zfill(2))).fetchall())
+        WHERE strftime('%Y',j.pu_date)=? AND strftime('%m',j.pu_date)=?{driver_filter} ORDER BY j.pu_date,j.pu_time""",(str(yr),str(mo).zfill(2))).fetchall())
     conn.close(); return jsonify(rows)
 
 # ── SETTINGS ──────────────────────────────────────────────────────────────────
